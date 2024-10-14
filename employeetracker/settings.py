@@ -25,12 +25,15 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
+CUSTOM_APP= [
+    'employeeprofile',
+]
 
-INSTALLED_APPS = [
+PRE_INSTALLED_APP = [
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -38,6 +41,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 ]
+INSTALLED_APPS = CUSTOM_APP+PRE_INSTALLED_APP
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
