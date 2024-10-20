@@ -2,5 +2,5 @@
 *env*
 .idea/
 *env/*
-*/__pycache__/
+*pycache__*
 *db.sqlite3

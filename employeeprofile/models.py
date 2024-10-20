@@ -9,6 +9,7 @@ POSITION_LEVEL_CHOICE = (('t1','T1'),('t2','T2'),('t3','T3'),('t4','T4'),('m1','
                          ('m4','M4'),('s1','S1'),('s2','S2'),('l1','L1'),('l2','L2'))
 BANK_CHOICE = (('icici','ICICI'),('hdfc','HDFC'),('iob','IOB'),('sbi','SBI'),('idfc','IDFC'))
 DEPENDENT_CHOICE = (('Mother','Mother'),('Father','Father'),('Sister','Sister'),('Brother','Brother'),('Spouse','Spouse'),('Son','Son'),('Daughter','Daughter'))
+IDENTITY_CHOICE = (('Voter_ID','Voter_ID'),('Passport','Passport'),('Aadhar_card','Aadhar_card'),('License','License'))
 # Create your models here.
 class Base(models.Model):
     created_by = models.ForeignKey(User,on_delete=models.CASCADE)
@@ -138,5 +139,26 @@ class Team(Base):
 
     def __str__(self):
         return self.team_name
+
+
+class IdentityDetail(Base):
+    employee = models.ForeignKey(User, on_delete=models.CASCADE, related_name='identity_name')
+    identity_name = models.CharField(max_length=100, choices=IDENTITY_CHOICE )
+    identity_number =models.CharField(max_length=100)
+    front_image=models.ImageField(upload_to='media/identity_cards')
+    back_image=models.ImageField(upload_to='media/identity_cards')
+
+    def __str__(self):
+        return f' {self.identity_name}: {self.identity_number} '
+    
+class ProficiencyCertification(Base):
+    employee = models.ForeignKey(User, on_delete=models.CASCADE, related_name='proficiency_certification')
+    name = models.CharField(max_length=200)
+    Since = models.DateField(null=True,blank=True)
+    image = models.ImageField(upload_to='media/proficiency_certification')
+    grade = models.CharField(max_length=20)
+
+    def __str__(self):
+        return f' { self.name}: {self.grade} '
 
 
