@@ -139,4 +139,15 @@ class Team(Base):
     def __str__(self):
         return self.team_name
 
+class EmploymentDetail(Base):
+    employee = models.ForeignKey(User, on_delete=models.CASCADE,related_name='rel_emp_detail')
+    employer_name = models.CharField(max_length=200)
+    doj = models.DateField(verbose_name='Date of Joining')
+    dor = models.DateField(verbose_name='Date of Relieving')
+    rol = models.CharField(max_length=100, verbose_name='Reason of Relieving')
+    rm = models.CharField(max_length=100, verbose_name='Reporting Manager')
+    rm_phone = models.BigIntegerField( verbose_name='Reporting Manager Contact Number')
+    rm_email = models.EmailField(max_length=100, verbose_name='Reporting Manager Contact Email')
 
+    def __str__(self):
+        return self.employer_name
