@@ -6,8 +6,8 @@ from django.urls import reverse
 from django.utils.html import format_html
 # Register your models here.
 
-admin.site.register(Position)
-admin.site.register(Group)
+# admin.site.register(Position)
+# admin.site.register(Group)
 # admin.site.register(EmployeeProfile)
 # admin.site.register(AddressDetails)
 # admin.site.register(AccountDetail)
@@ -79,6 +79,26 @@ class InsuranceInfoInline(admin.TabularInline):
     extra = 1
     exclude = ['created_by','create_at']
 
+class PositionAdmin(admin.ModelAdmin):
+    model = Position
+    exclude = ['created_by','create_at']
+
+    def save_model(self, request, obj, form, change):
+        print(request,"$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
+        if not change:
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
+
+class GroupAdmin(admin.ModelAdmin):
+    model = Group
+    exclude = ['created_by','create_at']
+
+    def save_model(self, request, obj, form, change):
+        print(request,"$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
+        if not change:
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
+
 class EmployeeProfileAdmin(admin.ModelAdmin):
     inlines = [ContactDetailsInline,AddressDetailsInline,
                EducationDetailInline,ProficiencyCertificationInline,
@@ -98,7 +118,8 @@ class EmployeeProfileAdmin(admin.ModelAdmin):
             instance.created_by = request.user
             instance.save()
 
-admin.site.register(EmployeeProfile,EmployeeProfileAdmin)
+admin.site.register(EmployeeProfile, EmployeeProfileAdmin)
 admin.site.register(ContactDetails,ContactDetailsAdmin)
-
+admin.site.register(Position, PositionAdmin)
+admin.site.register(Group, GroupAdmin)
 
