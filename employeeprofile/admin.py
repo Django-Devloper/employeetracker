@@ -2,12 +2,13 @@ from django.contrib import admin
 from .models import (Position,EmployeeProfile,ContactDetails,AddressDetails,AccountDetail,EducationDetail,
                      DependentDetail,InsuranceInfo,Group,Team,IdentityDetail,ProficiencyCertification)
 
+from django.urls import reverse
+from django.utils.html import format_html
 # Register your models here.
 
 # admin.site.register(Position)
 admin.site.register(Group)
 # admin.site.register(EmployeeProfile)
-# admin.site.register(ContactDetails)
 # admin.site.register(AddressDetails)
 # admin.site.register(AccountDetail)
 # admin.site.register(EducationDetail)
@@ -17,10 +18,26 @@ admin.site.register(Group)
 # admin.site.register(IdentityDetail)
 # admin.site.register(ProficiencyCertification)
 
+class ContactDetailsAdmin(admin.ModelAdmin):
+    fields = ['employee', 'contact_number', 'emergency_contact', 'personal_email']
+    def save_model(self, request, obj, form, change):
+        if not change:
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
+    list_display = ['employee', 'contact_number', 'emergency_contact', 'personal_email']
+
+
 class ContactDetailsInline(admin.TabularInline):
     model = ContactDetails
     extra = 1
     exclude = ['created_by','create_at']
+    show_change_link = True
+    fields = ['employee', 'contact_number', 'emergency_contact', 'personal_email', 'edit']
+    readonly_fields = ['edit']
+
+    def edit(self, obj):
+        url = reverse('admin:employeeprofile_contactdetails_change', args=[obj.pk])
+        return format_html(u'<a href="{}">Edit</a>', url)
 
 
 class AddressDetailsInline(admin.TabularInline):
@@ -80,7 +97,6 @@ class EmployeeProfileAdmin(admin.ModelAdmin):
     exclude = ['created_by','create_at']
 
     def save_model(self, request, obj, form, change):
-        print(request,"$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
         if not change:
             obj.created_by = request.user
         super().save_model(request, obj, form, change)
@@ -93,4 +109,10 @@ class EmployeeProfileAdmin(admin.ModelAdmin):
             instance.save()
 
 admin.site.register(EmployeeProfile,EmployeeProfileAdmin)
+
 admin.site.register(Position,PositionAdmin)
+
+admin.site.register(ContactDetails,ContactDetailsAdmin)
+
+
+
