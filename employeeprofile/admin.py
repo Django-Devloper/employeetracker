@@ -4,7 +4,7 @@ from .models import (Position,EmployeeProfile,ContactDetails,AddressDetails,Acco
 
 # Register your models here.
 
-admin.site.register(Position)
+# admin.site.register(Position)
 admin.site.register(Group)
 # admin.site.register(EmployeeProfile)
 # admin.site.register(ContactDetails)
@@ -62,6 +62,16 @@ class InsuranceInfoInline(admin.TabularInline):
     extra = 1
     exclude = ['created_by','create_at']
 
+class PositionAdmin(admin.ModelAdmin):
+    model = Position
+    exclude = ['created_by','create_at']
+
+    def save_model(self, request, obj, form, change):
+        if not change:
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
+
+
 class EmployeeProfileAdmin(admin.ModelAdmin):
     inlines = [ContactDetailsInline,AddressDetailsInline,
                EducationDetailInline,ProficiencyCertificationInline,
@@ -83,4 +93,4 @@ class EmployeeProfileAdmin(admin.ModelAdmin):
             instance.save()
 
 admin.site.register(EmployeeProfile,EmployeeProfileAdmin)
-
+admin.site.register(Position,PositionAdmin)
