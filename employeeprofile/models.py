@@ -46,7 +46,8 @@ class ContactDetails(Base):
     personal_email = models.EmailField(max_length=50)
 
     def __str__(self):
-        return str(self.contact_number)
+        # return str(self.contact_number)
+        return ''
 
 class AddressDetails(Base):
     employee = models.ForeignKey(EmployeeProfile, on_delete=models.CASCADE,related_name='address')
@@ -85,20 +86,11 @@ class EducationDetail(Base):
     def __str__(self):
         return self.qualification
 
-class DependentDetail(Base):
-    employee = models.ForeignKey(EmployeeProfile, on_delete=models.CASCADE,related_name='dependent')
-    relationship = models.CharField(choices=DEPENDENT_CHOICE,max_length=30)
-    dependent_name = models.CharField(max_length=100)
-    dependent_DOB = models.DateField()
-
-    def __str__(self):
-        return f'{self.relationship} : {self.dependent_name}'
-
 class InsuranceInfo(Base):
     employee = models.ForeignKey(EmployeeProfile, on_delete=models.CASCADE,related_name='insurance')
     insurer = models.CharField(max_length=100 , verbose_name='Policy Provider')
     insured = models.CharField(choices=(('self','self'),('dependent','dependent ')),max_length=100)
-    policy_holder_name = models.ForeignKey(DependentDetail ,models.CASCADE)
+    # policy_holder_name = models.ForeignKey(DependentDetail ,models.CASCADE)
     type_of_insurance = models.CharField(choices=(('individual','Individual'),('Family Floater','Family Floater')),max_length=20)
     sum_insured = models.BigIntegerField()
     policy_type = models.CharField(choices=(('health insurance','health insurance'),('life insurance','life insurance'),('general insurance','general insurance')) ,max_length = 50)
@@ -117,6 +109,15 @@ class InsuranceInfo(Base):
 
     def __str__(self):
         return  f'{self.policy_holder_name} : {self.policy_number}'
+
+class DependentDetail(Base):
+    dependent=models.ForeignKey(InsuranceInfo,on_delete=models.CASCADE,related_name='insurance_info')
+    relationship = models.CharField(choices=DEPENDENT_CHOICE,max_length=30)
+    dependent_name = models.CharField(max_length=100)
+    dependent_DOB = models.DateField()
+
+    def __str__(self):
+        return f'{self.relationship} : {self.dependent_name}'
 
 class Group(Base):
     name = models.CharField(max_length=100)
@@ -154,7 +155,7 @@ class IdentityDetail(Base):
 class ProficiencyCertification(Base):
     employee = models.ForeignKey(EmployeeProfile, on_delete=models.CASCADE, related_name='proficiency_certification')
     name = models.CharField(max_length=200)
-    Since = models.DateField(null=True,blank=True)
+    since = models.DateField(null=True,blank=True)
     image = models.ImageField(upload_to='media/proficiency_certification')
     grade = models.CharField(max_length=20)
 
