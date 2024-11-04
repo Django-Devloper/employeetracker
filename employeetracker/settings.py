@@ -12,10 +12,11 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 import os
+from dotenv import load_dotenv ,find_dotenv
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
+load_dotenv(find_dotenv(),override=True)
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
@@ -30,7 +31,9 @@ ALLOWED_HOSTS = ['*']
 
 # Application definition
 CUSTOM_APP= [
+    'daphne',
     'employeeprofile',
+    'llm',
 ]
 
 PRE_INSTALLED_APP = [
@@ -59,7 +62,7 @@ ROOT_URLCONF = 'employeetracker.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS':  [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -72,7 +75,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'employeetracker.wsgi.application'
+ASGI_APPLICATION = 'employeetracker.asgi.application'
 
 
 # Database
