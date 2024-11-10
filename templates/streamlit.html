@@ -5,11 +5,11 @@
     <meta charset="UTF-8">
     <title>Embedded Streamlit App</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 </head>
 <body>
-    <div class="=container">
-         <div class="row ">
+    <div class="container">
+         <div class="row">
             <div class="col-4">
                 <div class="card" style="min-height: 600px !important">
                     <div class="card-header">
@@ -29,7 +29,7 @@
                 <div class="card" style="min-height: 600px !important">
                     <div class="h5 card-header">Chat</div>
                         <div class="card-body flex-grow-1 overflow-auto">
-                            <p> this is only test</p>
+                            <p id="chat_messages"></p>
                         </div>
                         <div class="card-footer">
                             <form >
@@ -55,49 +55,66 @@
 <script src="https://code.jquery.com/jquery-3.7.1.slim.min.js" integrity="sha256-kmHvs0B+OpCW5GVHUNjv9rOmY0IvSIRcf7zGUDTDQM8=" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
 <script>
-    let ws = ''
-    const ws_path = (group) =>{
-         ws = '127.0.0.1:8000/path/'+group+'/'
-         return ws
-    }
-    const new_ws = (ws_path) =>{
-        console.log(ws_path ,"*************************")
-        var ws = new WebSocket('ws://127.0.0.1/path/sdsdwer3443');
-        console.log(ws,"$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
-    }
+    let ws; // Declare ws variable globally to access it across functions
+    const ws_path = (group) => {
+        const host = window.location.host;
+        const path = `ws://${host}/path/${group}/`;
+        return path;
+    };
 
-    ws.onopen = (event) => {
-    console.log("websocket connection stablished ")
-    }
+    const new_ws = (path) => {
+        ws = new WebSocket(path); // Establish a new WebSocket connection
 
-    ws.onmessage = (event) => {
-        let text = "";
-    }
+        ws.onopen = (event) => {
+            console.log("WebSocket connection established");
+        };
 
-    ws.onclose = (event) => {
-        console.log("connection closed");
-    }
-    $('#send_button').on('click',function(e){
-        e.preventDefault()
-        console.log("button clicked")
-        let question = $('#chat_detail').val()
-        ws.send(question)
-    });
+        ws.onmessage = (event) => {
+            console.log("Received message:", event.data);
+            $("#chat_messages").text(event.data)
+        };
 
-    $("#new_chat").on('click' , function(){
-        var now = new Date();
-        var timestampKey = now.getFullYear().toString() +
-           (now.getMonth() + 1).toString().padStart(2, '0') +
-           now.getDate().toString().padStart(2, '0') +
-           now.getHours().toString().padStart(2, '0') +
-           now.getMinutes().toString().padStart(2, '0') +
-           now.getSeconds().toString().padStart(2, '0');
+        ws.onclose = (event) => {
+            console.log("Connection closed");
+        };
+
+        ws.onerror = (event) => {
+            console.error("WebSocket error:", event);
+        };
+    };
+
+    $('#new_chat').on('click', function () {
+        const now = new Date();
+        const timestampKey = now.getFullYear().toString() +
+            (now.getMonth() + 1).toString().padStart(2, '0') +
+            now.getDate().toString().padStart(2, '0') +
+            now.getHours().toString().padStart(2, '0') +
+            now.getMinutes().toString().padStart(2, '0') +
+            now.getSeconds().toString().padStart(2, '0');
+
         console.log("Timestamp Key:", timestampKey);
-        path  = ws_path(timestampKey)
-        console.log(path ,"%^^^^^^^^^^^^^^^^^")
-        new_ws(ws_path)
+        const path = ws_path(timestampKey);
+
+        // Close any existing WebSocket connection before creating a new one
+        if (ws) {
+            ws.close();
+        }
+
+        new_ws(path);
     });
 
+    $('#send_button').on('click', function (e) {
+        e.preventDefault();
+        console.log("Send button clicked");
+
+        const question = $('#chat_detail').val();
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(question);
+            console.log("Message sent:", question);
+        } else {
+            console.error("WebSocket is not open. Unable to send message.");
+        }
+    });
 
 </script>
 

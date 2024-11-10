@@ -1,4 +1,3 @@
-from Scripts.pywin32_postinstall import verbose
 from langchain_openai import ChatOpenAI
 from langchain.schema import(SystemMessage,HumanMessage,AIMessage)
 from langchain.prompts import ChatPromptTemplate ,HumanMessagePromptTemplate ,SystemMessagePromptTemplate
@@ -14,9 +13,9 @@ class AskGPT:
 
     def ask_gpt(self,question):
         prompt = ChatPromptTemplate(
-            input_variables = ['content'],
+            input_variables = [question],
             messages = [
-                SystemMessage(content='you are a carreer consltant and professional resume writter . Your task is to enhance given resume and make sure it will pass ATS score more then 95% '),
+                SystemMessage(content='you are general purpose chat bot '),
                 HumanMessagePromptTemplate.from_template('{question}')
             ]
         )
@@ -25,6 +24,6 @@ class AskGPT:
             prompt = prompt,
             verbose =True
         )
-        output = chain.invoke(chain)
+        output = chain.run({'question':question})
         print(output ,"$$$$$")
-        return output.content
+        return output

@@ -12,9 +12,9 @@ tiktoken
 docx2txt
 pypdf
 requests
-numpys
-pandas
-dephne
+daphne
 django-channels
-channel
 pytest
+pillow
+channels
+channels_redis
