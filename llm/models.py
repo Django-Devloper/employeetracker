@@ -34,7 +34,6 @@ class Upload_Content(Base):
     def save(self, *args, **kwargs):
         upload_content = Upload_Content_View(self.file)
         embedding_status , chunk_size , embedding_cost = upload_content.create_embedding(self.file_name)
-        print(embedding_status , chunk_size , embedding_cost ,"4$$$$$$$$$$$$$$$$$$$$$")
         self.embedding_status =embedding_status
         self.chunk_size = chunk_size
         self.embedding_cost = embedding_cost

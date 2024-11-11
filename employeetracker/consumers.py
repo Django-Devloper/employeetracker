@@ -1,11 +1,9 @@
-import json
 from channels.generic.websocket import JsonWebsocketConsumer
-from sqlparse.engine.grouping import group, group_as
-
-from llm.views import AskGPT
+from llm.views import AskGPT ,Retrieve_Index
 from llm.models import Session
-from asgiref.sync import async_to_sync
+from llm.models import Upload_Content
 
+retrieve_index = Retrieve_Index()
 ask_gpt =AskGPT()
 
 class AskGPT(JsonWebsocketConsumer):
@@ -25,5 +23,7 @@ class AskGPT(JsonWebsocketConsumer):
 
     def receive(self, text_data=None, **kwargs):
         question = text_data
-        content = ask_gpt.ask_gpt(question)
+        index_name = Upload_Content.objects.last().file_name
+        vector_store = retrieve_index.fetch_embeddings(index_name)
+        content = ask_gpt.ask_gpt(vector_store ,question)
         self.send(text_data=content)

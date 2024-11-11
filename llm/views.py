@@ -1,8 +1,9 @@
+from langchain.chains.retrieval_qa.base import RetrievalQA
 from langchain_openai import ChatOpenAI
 from langchain.schema import(SystemMessage,HumanMessage,AIMessage)
 from langchain.prompts import ChatPromptTemplate ,HumanMessagePromptTemplate ,SystemMessagePromptTemplate
 from django.shortcuts import render
-from langchain.chains import LLMChain
+from langchain.chains import LLMChain , RetrievalQA
 from langchain.document_loaders import PyPDFLoader
 import os
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -11,12 +12,7 @@ import pinecone
 from langchain_openai import OpenAIEmbeddings
 from pinecone import ServerlessSpec
 from langchain_community.vectorstores import Pinecone
-from io import BytesIO
-from django.core.files.base import ContentFile
 import tempfile
-import PyPDF2
-from langchain.schema import Document  # Import Document from langchain
-
 
 def home(request):
     return render(request, 'streamlit.html')
@@ -25,20 +21,21 @@ class AskGPT:
     def __init__(self):
         self.llm = ChatOpenAI(model='gpt-4-turbo-preview',temperature=0)
 
-    def ask_gpt(self,question):
-        prompt = ChatPromptTemplate(
-            input_variables = [question],
-            messages = [
-                SystemMessage(content='you are general purpose chat bot '),
-                HumanMessagePromptTemplate.from_template('{question}')
-            ]
-        )
-        chain = LLMChain(
+    def ask_gpt(self,vector_store ,question):
+        retriever = vector_store.as_retriever(search_type = 'similarity' , searc_kwargd = {'k':3})
+        # prompt = ChatPromptTemplate(
+        #     input_variables = [question],
+        #     messages = [
+        #         SystemMessage(content='you are general purpose chat bot '),
+        #         HumanMessagePromptTemplate.from_template('{question}')
+        #     ]
+        # )
+        chain = RetrievalQA.from_chain_type(
             llm = self.llm,
-            prompt = prompt,
-            verbose =True
+            chain_type = 'stuff',
+            retriever = retriever
         )
-        output = chain.run({'question':question})
+        output = chain.run(question)
         return output
 
 class Upload_Content_View:
@@ -90,9 +87,11 @@ class Upload_Content_View:
         except Exception as e:
             return False ,chunks_length , embedding_cost
 
+class Retrieve_Index:
+
     def fetch_embeddings(self,index_name):
         pc = pinecone.Pinecone()
-        embeddings = OpenAIEmbeddings(model = 'text-embedding-3-small', dimension = 1536)
+        embeddings = OpenAIEmbeddings(model = 'text-embedding-3-small', dimensions = 1536)
         if index_name in pc.list_indexes().names():
             vector_store = Pinecone.from_existing_index(index_name, embeddings)
             return vector_store
