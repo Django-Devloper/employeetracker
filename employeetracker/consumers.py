@@ -25,21 +25,5 @@ class AskGPT(JsonWebsocketConsumer):
 
     def receive(self, text_data=None, **kwargs):
         question = text_data
-        print(question,"###################")
         content = ask_gpt.ask_gpt(question)
         self.send(text_data=content)
-
-        response_from_server = json.dumps(content)
-        # user = self.scope.get("user")
-        # print(user,"RRRRRRRRRRRRRRRRRR")
-        # print(response_from_server,"$$$$$$$$$$$$$$$$$$$")
-        # async_to_sync(self.channel_layer.group_send)(
-        #     self.group_name,
-        #     {
-        #         "type": "chat.message",
-        #         "text": response_from_server,
-        #     },
-    #     # )
-    # def chat_message(self, event):
-    #     self.send(text_data=event)
-    #     print('message send ^^^^^^^^^^^^^^^^^^^^^')
