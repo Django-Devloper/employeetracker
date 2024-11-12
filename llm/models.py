@@ -2,27 +2,22 @@ from django.db import models
 from employeeprofile.models import Base
 # Create your models here.
 from datetime import datetime
-from llm.views import Upload_Content_View
 
 class Session(Base):
     group = models.CharField(max_length=50)
-
-    def save(self,*args):
-        self.group= datetime.now().strftime("%Y%m%d%H%M%S")
-        return super().save(*args)
+    title = models.CharField(max_length=100,default='title')
 
     def __str__(self):
         return self.group
 
 class ChatHistory(Base):
     session = models.ForeignKey(Session,on_delete=models.CASCADE)
-    title = models.CharField(max_length=100)
     question = models.TextField(max_length=5000)
     answer = models.TextField(max_length=30000)
     is_deleted = models.BooleanField(default=False)
 
     def __str__(self):
-        return self.title
+        return str(self.session)
 
 class Upload_Content(Base):
     file_name = models.CharField(max_length=100)
@@ -32,6 +27,7 @@ class Upload_Content(Base):
     embedding_status = models.BooleanField(default=False)
 
     def save(self, *args, **kwargs):
+        from llm.views import Upload_Content_View
         upload_content = Upload_Content_View(self.file)
         embedding_status , chunk_size , embedding_cost = upload_content.create_embedding(self.file_name)
         self.embedding_status =embedding_status

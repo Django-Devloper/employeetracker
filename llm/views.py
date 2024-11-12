@@ -13,30 +13,55 @@ from langchain_openai import OpenAIEmbeddings
 from pinecone import ServerlessSpec
 from langchain_community.vectorstores import Pinecone
 import tempfile
+from llm.models import ChatHistory ,Session
+from django.http import JsonResponse
+
 
 def home(request):
-    return render(request, 'streamlit.html')
+    session_history = Session.objects.filter(created_by=request.user).order_by('-create_at').values('group', 'title')
+    return render(request, 'streamlit.html',context={'session_history':session_history})
+
+def get_chat_history(request):
+    group = request.GET.get('group')
+    chat_history = ChatHistory.objects.filter(session__group=group, created_by=request.user).values('question', 'answer')
+    return JsonResponse({'chat_history': list(chat_history)})
 
 class AskGPT:
     def __init__(self):
         self.llm = ChatOpenAI(model='gpt-4-turbo-preview',temperature=0)
 
-    def ask_gpt(self,vector_store ,question):
-        retriever = vector_store.as_retriever(search_type = 'similarity' , searc_kwargd = {'k':3})
-        # prompt = ChatPromptTemplate(
-        #     input_variables = [question],
-        #     messages = [
-        #         SystemMessage(content='you are general purpose chat bot '),
-        #         HumanMessagePromptTemplate.from_template('{question}')
-        #     ]
-        # )
+    def ask_gpt(self, vector_store, question, session_id):
+        retriever = vector_store.as_retriever(search_type='similarity', search_kwargs={'k': 3})
+
+        # Retrieve chat history if it exists
         chain = RetrievalQA.from_chain_type(
-            llm = self.llm,
-            chain_type = 'stuff',
-            retriever = retriever
+            llm=self.llm,
+            chain_type='stuff',
+            retriever=retriever,
         )
-        output = chain.run(question)
+
+        chat_history = ChatHistory.objects.filter(session_id=session_id).order_by('create_at')
+        formatted_history = []
+
+        # Format chat history for context if available
+        if chat_history.exists():
+            for chat in chat_history:
+                formatted_history.append(f"User: {chat.question}\nAgent: {chat.answer}")
+            # Joining the history in a format the agent can understand
+            history_context = "\n\n".join(formatted_history)
+            # Including the formatted history as context for the question
+            full_prompt = f"Here is the previous conversation history:\n{history_context}\n\nUser: {question}"
+        else:
+            title_prompt = f"Generate a concise title (under 50 words) for the following session context:\n\n{question}"
+            title = chain.run(title_prompt)
+            # Storing the title (assuming you have a Session model with a 'title' field)
+            session_obj = Session.objects.filter(group=session_id).first()
+            session_obj.title=title[:50] # Ensuring title length is capped at 50 words
+            session_obj.save()
+            full_prompt = question  # No history available, using only the current question
+        output = chain.run(full_prompt)
         return output
+
 
 class Upload_Content_View:
     def __init__(self , file):

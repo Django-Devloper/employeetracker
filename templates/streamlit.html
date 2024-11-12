@@ -6,6 +6,73 @@
     <title>Embedded Streamlit App</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        .chat-message {
+            margin: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            max-width: 60%;
+        }
+        .question {
+            background-color: #d1e7dd;
+            text-align: right;
+            align-self: flex-end;
+            margin-left: auto;
+        }
+        .answer {
+            background-color: #f8d7da;
+            text-align: left;
+            align-self: flex-start;
+            margin-right: auto;
+        }
+        #chat_messages {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .scroller {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 500px; /* Adjust this value as needed */
+            overflow-y: auto; /* Enables vertical scrolling */
+            padding-right: 10px; /* Optional: Add some padding to avoid content clipping */
+            margin-right: 10px; /* Optional: Adjust as necessary to fit container */
+        }
+        .chat-history-item {
+            text-align: left;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            margin: 5px 0;
+            cursor: pointer; /* Makes it look clickable */
+            border-radius: 4px;
+            display: inline-block;
+        }
+
+        .chat-history-item:hover {
+            background-color: #e0e0e0; /* Add hover effect for better UI */
+            text-decoration: underline; /* Underline on hover */
+        }
+        .spinner {
+            border: 3px solid #f3f3f3; /* Light gray background color */
+            border-top: 3px solid #3498db; /* Blue color for the spinner */
+            border-radius: 50%;
+            width: 20px; /* Size of the spinner */
+            height: 20px;
+            animation: spin 1s linear infinite; /* The spinning animation */
+            margin-left: 10px; /* Space between the icon and the spinner */
+            display: inline-block; /* To align next to the text */
+        }
+
+        /* Define the spinning animation */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+    </style>
+
 </head>
 <body>
     <div class="container">
@@ -20,7 +87,15 @@
                             </div>
                         </div>
                     </div>
-                    <div class="card-body"></div>
+                    <div class="card-body">
+                        <span id="chat_history" class="scroller">
+                                {% for session in session_history %}
+                                    <p class="chat-history-item" data-group="{{ session.group }}" data-title="{{ session.title }}">
+                                        {{ session.title }}
+                                    </p>
+                                {% endfor %}
+                        </span>
+                    </div>
 
                 </div>
             </div>
@@ -29,7 +104,7 @@
                 <div class="card" style="min-height: 600px !important">
                     <div class="h5 card-header">Chat</div>
                         <div class="card-body flex-grow-1 overflow-auto">
-                            <p id="chat_messages"></p>
+                            <span id="chat_messages" class="scroller"></span>
                         </div>
                         <div class="card-footer">
                             <form >
@@ -39,7 +114,10 @@
                                             <input type="text"  id="chat_detail" placeholder="Ask anything..." class="form-control">
                                         </div>
                                         <div class="col-1">
-                                            <button type="submit" id="send_button" class="btn btn-primary"><i class="fa-solid fa-paper-plane"></i></button>
+                                            <button type="submit" id="send_button" class="btn btn-primary">
+                                                <i class="fa-solid fa-paper-plane" id="send_icon"></i>
+                                                <span id="spinner" class="spinner" style="display: none;"></span>
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -52,7 +130,7 @@
     </div>
 
 </body>
-<script src="https://code.jquery.com/jquery-3.7.1.slim.min.js" integrity="sha256-kmHvs0B+OpCW5GVHUNjv9rOmY0IvSIRcf7zGUDTDQM8=" crossorigin="anonymous"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
 <script>
     let ws; // Declare ws variable globally to access it across functions
@@ -71,10 +149,46 @@
 
         ws.onmessage = (event) => {
             console.log("Received message:", event.data);
-            $("#chat_messages").text(event.data)
-        };
 
-        ws.onclose = (event) => {
+            // Parse the incoming data as an object
+            const responseData = JSON.parse(event.data);
+
+            // Extract chats and session history from the response data
+            const messages = responseData.chats || [];
+            const session_history = responseData.session_history || [];
+
+            // Clear existing chat messages and session history
+            $("#chat_messages").empty();
+            $("#chat_history").empty();
+
+            // Loop through each message and create elements for question and answer
+            messages.forEach((message) => {
+                const questionElement = $("<div>")
+                    .text(message.question)
+                    .addClass("chat-message question");
+                const answerElement = $("<div>")
+                    .text(message.answer)
+                    .addClass("chat-message answer");
+
+                // Append question and answer elements
+                $("#chat_messages").append(questionElement, answerElement);
+            });
+            session_history.forEach((item) => {
+                const historyElement = $("<p>")
+                    .text(item.title) // Set the text to the title value
+                    .attr("data-group", item.group) // Store group in a custom data attribute
+                    .addClass("chat-history-item") // Optional: Add a CSS class for styling
+                    .on("click", function() {
+                    });
+
+                $("#chat_history").append(historyElement);
+    });
+        $('#send_button').prop('disabled', false);
+        $('#send_icon').show(); // Hide the icon
+        $('#spinner').hide();
+            };
+
+    ws.onclose = (event) => {
             console.log("Connection closed");
         };
 
@@ -84,6 +198,8 @@
     };
 
     $('#new_chat').on('click', function () {
+        $("#chat_messages").empty();
+        $('#chat_detail').val('');
         const now = new Date();
         const timestampKey = now.getFullYear().toString() +
             (now.getMonth() + 1).toString().padStart(2, '0') +
@@ -106,14 +222,60 @@
     $('#send_button').on('click', function (e) {
         e.preventDefault();
         console.log("Send button clicked");
-
+        $(this).prop('disabled', true);
+        $('#send_icon').hide(); // Hide the icon
+        $('#spinner').show();
         const question = $('#chat_detail').val();
         if (ws && ws.readyState === WebSocket.OPEN) {
             ws.send(question);
             console.log("Message sent:", question);
+            $('#chat_detail').val('');
         } else {
             console.error("WebSocket is not open. Unable to send message.");
         }
+    });
+    $('#chat_history').on('click', '.chat-history-item', function () {
+        const group = $(this).data('group');
+        const title = $(this).data('title');
+        console.log("Opening WebSocket for group:", group);
+
+        if (ws) {
+            ws.close();
+        }
+
+        const path = ws_path(group);
+        new_ws(path);
+    });
+
+    $('.chat-history-item').on('click', function() {
+        const group = $(this).data('group'); // Get the group from the data attribute
+        $.ajax({
+            url: '/get-chat-history/',  // Your AJAX URL
+            method: 'GET',
+            data: { group: group },
+            success: function(response) {
+                if (response.chat_history) {
+                    // Clear existing chat messages
+                    $('#chat_messages').empty();
+
+                    // Loop through the chat history and append it to the chat section
+                    response.chat_history.forEach(function(message) {
+                        const questionElement = $("<div>").text(message.question).addClass("chat-message question");
+                        const answerElement = $("<div>").text(message.answer).addClass("chat-message answer");
+
+                        // Append question and answer elements to chat section
+                        $("#chat_messages").append(questionElement, answerElement);
+                    });
+
+                    // Also, initiate the WebSocket connection for this session group
+                    const path = ws_path(group);
+
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error("Failed to load chat history:", error);
+            }
+        });
     });
 
 </script>

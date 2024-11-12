@@ -16,10 +16,12 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from llm.views import home
+from llm.views import home ,get_chat_history
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', home)
-    ]
+    path('', home),
+    path('get-chat-history/', get_chat_history, name='get_chat_history'),
+
+]
 

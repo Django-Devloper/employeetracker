@@ -1,29 +1,49 @@
-from channels.generic.websocket import JsonWebsocketConsumer
-from llm.views import AskGPT ,Retrieve_Index
-from llm.models import Session
-from llm.models import Upload_Content
+from channels.generic.websocket import AsyncJsonWebsocketConsumer
+from llm.views import AskGPT, Retrieve_Index
+from llm.models import Session, ChatHistory, Upload_Content
+from asgiref.sync import sync_to_async
 
 retrieve_index = Retrieve_Index()
-ask_gpt =AskGPT()
+ask_gpt = AskGPT()
 
-class AskGPT(JsonWebsocketConsumer):
-    def connect(self,):
-        self.accept()
-        # self.group_name = self.scope["url_route"]["kwargs"]["group_name"]
-        # print(self.group_name,"RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR")
-        # async_to_sync(self.channel_layer.group_add)(self.group_name, self.channel_name)
+class AskGPTConsumer(AsyncJsonWebsocketConsumer):
+    async def connect(self):
+        await self.accept()
+        self.group_name = self.scope["url_route"]["kwargs"]["group_name"]
+        self.user = self.scope["user"]
 
-    def disconnect(self, code=None):
-        # async_to_sync(self.channel_layer.group_discard)(
-        #     self.group_name, self.channel_name)
-        self.close()
-    def get_or_create_session(self,session=None):
-        session = Session.objects.get_or_create(session=session)
-        return session
+    async def disconnect(self, code=None):
+        await self.close()
 
-    def receive(self, text_data=None, **kwargs):
-        question = text_data
-        index_name = Upload_Content.objects.last().file_name
-        vector_store = retrieve_index.fetch_embeddings(index_name)
-        content = ask_gpt.ask_gpt(vector_store ,question)
-        self.send(text_data=content)
+    async def get_or_create_session(self, session=None):
+        session_obj, created = await sync_to_async(Session.objects.get_or_create)(
+            group=session, created_by=self.user
+        )
+        return session_obj
+
+    async def create_chat_history(self, session_id, question, answer):
+        await sync_to_async(ChatHistory.objects.create)(
+            session=session_id, question=question, answer=answer, created_by=self.user
+        )
+        return await sync_to_async(list)(
+            ChatHistory.objects.filter(session=session_id).values('question', 'answer')
+        )
+
+    async def session_history(self):
+        return await sync_to_async(list)(Session.objects.filter(created_by=self.user).order_by('-create_at').values('group','title'))
+
+    async def receive(self, text_data=None, **kwargs):
+        if text_data is not None:
+            question = text_data
+            session_obj = await self.get_or_create_session(self.group_name)
+            session_id = session_obj
+            last_upload = await sync_to_async(Upload_Content.objects.last)()
+            index_name = last_upload.file_name if last_upload else "default_index"
+            vector_store = await sync_to_async(retrieve_index.fetch_embeddings)(index_name)
+            content = await sync_to_async(ask_gpt.ask_gpt)(vector_store, question, session_id)
+            chats = await self.create_chat_history(session_id, question, content)
+            chats = list(chats)
+            session_history  = await self.session_history()
+            session_history = list(session_history)
+            message = {'chats':chats , 'session_history':session_history}
+            await self.send_json(message)
