@@ -4,19 +4,6 @@ from .models import (Position,EmployeeProfile,ContactDetails,AddressDetails,Acco
 
 from django.urls import reverse
 from django.utils.html import format_html
-# Register your models here.
-
-# admin.site.register(Position)
-# admin.site.register(Group)
-# admin.site.register(EmployeeProfile)
-# admin.site.register(AddressDetails)
-# admin.site.register(AccountDetail)
-# admin.site.register(EducationDetail)
-# admin.site.register(DependentDetail)
-# admin.site.register(InsuranceInfo)
-# admin.site.register(Team)
-# admin.site.register(IdentityDetail)
-# admin.site.register(ProficiencyCertification)
 
 class ContactDetailsAdmin(admin.ModelAdmin):
     fields = [ 'contact_number', 'emergency_contact', 'personal_email']
@@ -218,9 +205,7 @@ class EmployeeProfileAdmin(admin.ModelAdmin):
             instance.save()
 
 admin.site.register(EmployeeProfile,EmployeeProfileAdmin)
-
 admin.site.register(Position,PositionAdmin)
-
 admin.site.register(ContactDetails,ContactDetailsAdmin)
 admin.site.register(AddressDetails,AddressDetailAdmin)
 admin.site.register(EducationDetail,EducationDetailAdmin)

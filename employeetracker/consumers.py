@@ -1,4 +1,5 @@
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
+import json
 from llm.views import AskGPT, Retrieve_Index
 from llm.models import Session, ChatHistory, Upload_Content
 from asgiref.sync import sync_to_async
@@ -33,13 +34,13 @@ class AskGPTConsumer(AsyncJsonWebsocketConsumer):
         return await sync_to_async(list)(Session.objects.filter(created_by=self.user).order_by('-create_at').values('group','title'))
 
     async def receive(self, text_data=None, **kwargs):
+        data = json.loads(text_data)
         if text_data is not None:
-            question = text_data
+            question = data.get('question')  # Access 'question'
+            index_name = data.get('index')  # Access 'index'
             session_obj = await self.get_or_create_session(self.group_name)
             session_id = session_obj
-            last_upload = await sync_to_async(Upload_Content.objects.last)()
-            index_name = last_upload.file_name if last_upload else "default_index"
-            vector_store = await sync_to_async(retrieve_index.fetch_embeddings)(index_name)
+            vector_store = await sync_to_async(retrieve_index.fetch_all_embeddings)(index_name)
             content = await sync_to_async(ask_gpt.ask_gpt)(vector_store, question, session_id)
             chats = await self.create_chat_history(session_id, question, content)
             chats = list(chats)

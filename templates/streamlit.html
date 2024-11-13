@@ -96,34 +96,45 @@
                                 {% endfor %}
                         </span>
                     </div>
-
                 </div>
             </div>
 
             <div class="col ">
                 <div class="card" style="min-height: 600px !important">
-                    <div class="h5 card-header">Chat</div>
-                        <div class="card-body flex-grow-1 overflow-auto">
-                            <span id="chat_messages" class="scroller"></span>
-                        </div>
-                        <div class="card-footer">
-                            <form >
-                                <div class="form-group">
-                                    <div class="row">
-                                        <div class="col">
-                                            <input type="text"  id="chat_detail" placeholder="Ask anything..." class="form-control">
-                                        </div>
-                                        <div class="col-1">
-                                            <button type="submit" id="send_button" class="btn btn-primary">
-                                                <i class="fa-solid fa-paper-plane" id="send_icon"></i>
-                                                <span id="spinner" class="spinner" style="display: none;"></span>
-                                            </button>
-                                        </div>
+                    <div class="card-header">
+                        <div class="row">
+                            <div class="col h5"> Chat </div>
+                            <div class="col-3">
+                                <select name="indexes" id="indexes" class="btn btn-secondary dropdown-toggle">
+                                {% for index in indexes %}
+                                  <option value={{index.name}} class="btn btn-white">{{index.name}}</option>
+                                {% endfor %}
+                                </select>
+                            </div>
+                    </div>
+                    </div>
+
+                    <div class="card-body flex-grow-1 overflow-auto">
+                        <span id="chat_messages" class="scroller"></span>
+                    </div>
+                    <div class="card-footer">
+                        <form >
+                            <div class="form-group">
+                                <div class="row">
+                                    <div class="col">
+                                        <input type="text"  id="chat_detail" placeholder="Ask anything..." class="form-control">
+                                    </div>
+                                    <div class="col-1">
+                                        <button type="submit" id="send_button" class="btn btn-primary">
+                                            <i class="fa-solid fa-paper-plane" id="send_icon"></i>
+                                            <span id="spinner" class="spinner" style="display: none;"></span>
+                                        </button>
                                     </div>
                                 </div>
-                            </form>
-                        </div>
+                            </div>
+                        </form>
                     </div>
+                </div>
             </div>
         </div>
 
@@ -180,7 +191,6 @@
                     .addClass("chat-history-item") // Optional: Add a CSS class for styling
                     .on("click", function() {
                     });
-
                 $("#chat_history").append(historyElement);
     });
         $('#send_button').prop('disabled', false);
@@ -226,9 +236,10 @@
         $('#send_icon').hide(); // Hide the icon
         $('#spinner').show();
         const question = $('#chat_detail').val();
+        const index = $('#indexes option:selected').val()
+
         if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.send(question);
-            console.log("Message sent:", question);
+            ws.send(JSON.stringify({ question: question, index: index }));
             $('#chat_detail').val('');
         } else {
             console.error("WebSocket is not open. Unable to send message.");

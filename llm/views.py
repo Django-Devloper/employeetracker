@@ -13,13 +13,17 @@ from langchain_openai import OpenAIEmbeddings
 from pinecone import ServerlessSpec
 from langchain_community.vectorstores import Pinecone
 import tempfile
-from llm.models import ChatHistory ,Session
+
+from twisted.internet.defer import passthru
+
+from llm.models import ChatHistory ,Session ,Index_Name
 from django.http import JsonResponse
 
 
 def home(request):
     session_history = Session.objects.filter(created_by=request.user).order_by('-create_at').values('group', 'title')
-    return render(request, 'streamlit.html',context={'session_history':session_history})
+    indexes = Index_Name.objects.all().values('name')
+    return render(request, 'streamlit.html',context={'session_history':session_history ,'indexes':indexes})
 
 def get_chat_history(request):
     group = request.GET.get('group')
@@ -32,7 +36,6 @@ class AskGPT:
 
     def ask_gpt(self, vector_store, question, session_id):
         retriever = vector_store.as_retriever(search_type='similarity', search_kwargs={'k': 3})
-
         # Retrieve chat history if it exists
         chain = RetrievalQA.from_chain_type(
             llm=self.llm,
@@ -42,8 +45,6 @@ class AskGPT:
 
         chat_history = ChatHistory.objects.filter(session_id=session_id).order_by('create_at')
         formatted_history = []
-
-        # Format chat history for context if available
         if chat_history.exists():
             for chat in chat_history:
                 formatted_history.append(f"User: {chat.question}\nAgent: {chat.answer}")
@@ -54,7 +55,6 @@ class AskGPT:
         else:
             title_prompt = f"Generate a concise title (under 50 words) for the following session context:\n\n{question}"
             title = chain.run(title_prompt)
-            # Storing the title (assuming you have a Session model with a 'title' field)
             session_obj = Session.objects.filter(group=session_id).first()
             session_obj.title=title[:50] # Ensuring title length is capped at 50 words
             session_obj.save()
@@ -62,42 +62,57 @@ class AskGPT:
         output = chain.run(full_prompt)
         return output
 
+class UploadContentView:
+    def __init__(self):
+        self.pc = pinecone.Pinecone()  # Initialize Pinecone connection
+        self.embeddings = OpenAIEmbeddings(model='text-embedding-3-small', dimensions=1536)  # Ensure correct usage of OpenAI embeddings
 
-class Upload_Content_View:
-    def __init__(self , file):
-        self.file = file
-
-    def file_content(self):
+    def file_content(self, file):
         # Read the file bytes
-        file_byte = self.file.read()
+        file_byte = file.read()
         # Create a temporary file to store the PDF content
         with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as temp_file:
-            temp_file.write(file_byte)  # Write the byte data to the temp file
-            temp_file_path = temp_file.name  # Get the temp file path
+            temp_file.write(file_byte)  # Write byte data to the temp file
+            temp_file_path = temp_file.name  # Get temp file path
 
-        # Pass the temp file path to PyPDFLoader
+        # Load content using PyPDFLoader
         loader = PyPDFLoader(temp_file_path)
         data = loader.load()
         return data
 
-    def chunk_data(self,data):
+    def chunk_data(self, data):
+        # Chunk data using a text splitter
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=256, chunk_overlap=0)
         chunks = text_splitter.split_documents(data)
         return chunks
 
-    def embedding_cost(self,chunks):
+    def embedding_cost(self, chunks):
         enc = tiktoken.encoding_for_model('text-embedding-ada-002')
-        total_token = sum(len(enc.encode(page.page_content)) for page in chunks)
-        return total_token/1000*0.0004
+        total_tokens = sum(len(enc.encode(page.page_content)) for page in chunks)
+        return total_tokens / 1000 * 0.0004  # Cost calculation
 
-    def create_embedding(self,index_name):
-        data = self.file_content()
+    def update_embedding(self, file, index_name, namespace):
+        data = self.file_content(file)
         chunks = self.chunk_data(data)
         chunks_length = len(chunks)
         embedding_cost = self.embedding_cost(chunks)
-        pc = pinecone.Pinecone()
-        embeddings = OpenAIEmbeddings(model = 'text-embedding-3-small', dimensions = 1536)
-        pc.create_index(
+        chunk_texts = [str(chunk) for chunk in chunks]
+        embeddings = self.embeddings.embed_documents(chunk_texts)
+        try:
+            index = self.pc.Index(index_name)
+            index.upsert(
+                vectors=[
+                    {"id": f"chunk-{i}", "values": embedding}
+                    for i, embedding in enumerate(embeddings)
+                ],
+                namespace=namespace
+            )
+            return True, chunks_length, embedding_cost
+        except Exception as e:
+            # Return detailed error message for easier debugging
+            return False, chunks_length, embedding_cost
+    def create_embedding(self, index_name):
+        self.pc.create_index(
             name=index_name.lower(),
             dimension=1536,
             metric='cosine',
@@ -106,22 +121,23 @@ class Upload_Content_View:
                 region='us-east-1'
             )
         )
-        try:
-            Pinecone.from_documents(chunks,embeddings ,index_name=index_name)
-            return True ,chunks_length , embedding_cost
-        except Exception as e:
-            return False ,chunks_length , embedding_cost
 
 class Retrieve_Index:
 
-    def fetch_embeddings(self,index_name):
-        pc = pinecone.Pinecone()
-        embeddings = OpenAIEmbeddings(model = 'text-embedding-3-small', dimensions = 1536)
-        if index_name in pc.list_indexes().names():
-            vector_store = Pinecone.from_existing_index(index_name, embeddings)
-            return vector_store
+    def fetch_all_embeddings(self,index_name):
+        embeddings = OpenAIEmbeddings(model='text-embedding-3-small', dimensions=1536)
+        vector_store = Pinecone.from_existing_index(index_name, embeddings)
+        return vector_store
 
-    def delete_pinecone_index(self,index_name):
+    def delete_pinecone_index(self,index_name ,name_space=None):
         pc = pinecone.Pinecone()
-        pc.delete_index(index_name)
+        try:
+            if name_space:
+                index = pc.Index(index_name)
+                index.delete(delete_all=True, namespace=name_space)
+            else:
+                pc.delete_index(index_name)
+        except:
+            pass
+
 
