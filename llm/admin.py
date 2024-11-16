@@ -1,5 +1,7 @@
 from django.contrib import admin
-from llm.models import Upload_Content,Index_Name
+from llm.models import Upload_Content, Index_Name, Session
+
+
 # Register your models here.
 
 class Upload_ContentAdmin(admin.ModelAdmin):
@@ -45,3 +47,4 @@ class Index_NameAdmin(admin.ModelAdmin):
 
 admin.site.register(Upload_Content,Upload_ContentAdmin)
 admin.site.register(Index_Name,Index_NameAdmin)
+admin.site.register(Session)

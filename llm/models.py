@@ -52,7 +52,7 @@ class Upload_Content(Base):
         if not self.pk:
             from llm.views import UploadContentView
             upload_content = UploadContentView()
-            embedding_status , chunk_size , embedding_cost = upload_content.update_embedding(self.file ,self.index_name.name ,self.file_name)
+            embedding_status , chunk_size , embedding_cost = upload_content.update_embedding(self.file ,self.index_name.name )
             self.embedding_status =embedding_status
             self.chunk_size = chunk_size
             self.embedding_cost = embedding_cost

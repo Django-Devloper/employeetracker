@@ -48,9 +48,7 @@ class AskGPT:
         if chat_history.exists():
             for chat in chat_history:
                 formatted_history.append(f"User: {chat.question}\nAgent: {chat.answer}")
-            # Joining the history in a format the agent can understand
             history_context = "\n\n".join(formatted_history)
-            # Including the formatted history as context for the question
             full_prompt = f"Here is the previous conversation history:\n{history_context}\n\nUser: {question}"
         else:
             title_prompt = f"Generate a concise title (under 50 words) for the following session context:\n\n{question}"
@@ -91,22 +89,13 @@ class UploadContentView:
         total_tokens = sum(len(enc.encode(page.page_content)) for page in chunks)
         return total_tokens / 1000 * 0.0004  # Cost calculation
 
-    def update_embedding(self, file, index_name, namespace):
+    def update_embedding(self, file, index_name):
         data = self.file_content(file)
         chunks = self.chunk_data(data)
         chunks_length = len(chunks)
         embedding_cost = self.embedding_cost(chunks)
-        chunk_texts = [str(chunk) for chunk in chunks]
-        embeddings = self.embeddings.embed_documents(chunk_texts)
         try:
-            index = self.pc.Index(index_name)
-            index.upsert(
-                vectors=[
-                    {"id": f"chunk-{i}", "values": embedding}
-                    for i, embedding in enumerate(embeddings)
-                ],
-                namespace=namespace
-            )
+            Pinecone.from_documents(chunks,self.embeddings, index_name=index_name)
             return True, chunks_length, embedding_cost
         except Exception as e:
             # Return detailed error message for easier debugging
