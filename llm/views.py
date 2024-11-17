@@ -35,7 +35,7 @@ class AskGPT:
         self.llm = ChatOpenAI(model='gpt-4-turbo-preview',temperature=0)
 
     def ask_gpt(self, vector_store, question, session_id):
-        retriever = vector_store.as_retriever(search_type='similarity', search_kwargs={'k': 3})
+        retriever = vector_store.as_retriever(search_type='similarity', search_kwargs={'k': 5})
         # Retrieve chat history if it exists
         chain = RetrievalQA.from_chain_type(
             llm=self.llm,
@@ -57,8 +57,9 @@ class AskGPT:
             session_obj.title=title[:50] # Ensuring title length is capped at 50 words
             session_obj.save()
             full_prompt = question  # No history available, using only the current question
-        output = chain.run(full_prompt)
-        return output
+        results = chain.run(full_prompt)
+
+        return results
 
 class UploadContentView:
     def __init__(self):
@@ -98,8 +99,14 @@ class UploadContentView:
             Pinecone.from_documents(chunks,self.embeddings, index_name=index_name)
             return True, chunks_length, embedding_cost
         except Exception as e:
+            pinecone_index = Pinecone.from_existing_index(index_name=index_name,embedding=self.embeddings)
+            pinecone_index.upsert(chunks)
+            print(e)
+
             # Return detailed error message for easier debugging
             return False, chunks_length, embedding_cost
+
+
     def create_embedding(self, index_name):
         self.pc.create_index(
             name=index_name.lower(),
@@ -112,11 +119,16 @@ class UploadContentView:
         )
 
 class Retrieve_Index:
+    def __init__(self, index_name):
+        self.index_name = index_name
+        self.embeddings = OpenAIEmbeddings(model='text-embedding-3-small', dimensions=1536)
+        self.vector_store = Pinecone.from_existing_index(self.index_name, self.embeddings)
+        print(f"Connected to Pinecone index: {self.index_name}")
 
-    def fetch_all_embeddings(self,index_name):
-        embeddings = OpenAIEmbeddings(model='text-embedding-3-small', dimensions=1536)
-        vector_store = Pinecone.from_existing_index(index_name, embeddings)
-        return vector_store
+    def fetch_all_embeddings(self):
+        # This method can be used if you need to retrieve all vectors (for future functionality)
+        return self.vector_store
+
 
     def delete_pinecone_index(self,index_name ,name_space=None):
         pc = pinecone.Pinecone()

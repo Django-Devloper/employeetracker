@@ -4,7 +4,6 @@ from llm.views import AskGPT, Retrieve_Index
 from llm.models import Session, ChatHistory, Upload_Content
 from asgiref.sync import sync_to_async
 
-retrieve_index = Retrieve_Index()
 ask_gpt = AskGPT()
 
 class AskGPTConsumer(AsyncJsonWebsocketConsumer):
@@ -40,7 +39,8 @@ class AskGPTConsumer(AsyncJsonWebsocketConsumer):
             index_name = data.get('index')  # Access 'index'
             session_obj = await self.get_or_create_session(self.group_name)
             session_id = session_obj
-            vector_store = await sync_to_async(retrieve_index.fetch_all_embeddings)(index_name)
+            retrieve_index = Retrieve_Index(index_name)
+            vector_store = await sync_to_async(retrieve_index.fetch_all_embeddings)()
             content = await sync_to_async(ask_gpt.ask_gpt)(vector_store, question, session_id)
             chats = await self.create_chat_history(session_id, question, content)
             chats = list(chats)

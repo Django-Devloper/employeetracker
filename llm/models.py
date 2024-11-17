@@ -25,10 +25,11 @@ class Index_Name(Base):
         default_permissions = ('add', 'delete', 'view')
 
     def save(self, *args, **kwargs):
-        from llm.views import UploadContentView
-        upload_content = UploadContentView()
-        upload_content.create_embedding(self.name)
-        return super().save(*args, **kwargs)
+        if not self.pk:
+            from llm.views import UploadContentView
+            upload_content = UploadContentView()
+            upload_content.create_embedding(self.name)
+            return super().save(*args, **kwargs)
 
     def delete(self, using=None, keep_parents=False):
         from llm.views import Retrieve_Index

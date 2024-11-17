@@ -1,9 +1,7 @@
 from django.contrib import admin
 from llm.models import Upload_Content, Index_Name, Session
 
-
 # Register your models here.
-
 class Upload_ContentAdmin(admin.ModelAdmin):
     fields = [ 'index_name','file_name', 'file',]
     def save_model(self, request, obj, form, change):
